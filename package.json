@@ -1,0 +1,49 @@
+{
+  "name": "super-sam-la-victoria",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts,.tsx",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
+    "test": "vitest run"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.4.8",
+    "@testing-library/react": "^14.3.1",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@typescript-eslint/eslint-plugin": "^8.71.2",
+    "@typescript-eslint/parser": "^8.71.2",
+    "@vitejs/plugin-react": "^4.0.0",
+    "autoprefixer": "^10.4.14",
+    "eslint": "^8.57.0",
+    "eslint-plugin-react-hooks": "^4.6.2",
+    "jsdom": "^24.1.0",
+    "postcss": "^8.4.24",
+    "prettier": "^3.3.3",
+    "tailwindcss": "^3.3.2",
+    "typescript": "^5.9.3",
+    "vite": "^4.4.0",
+    "vite-plugin-pwa": "^0.14.0",
+    "vitest": "^1.6.0"
+  },
+  "dependencies": {
+    "@radix-ui/react-slot": "^1.0.0",
+    "@supabase/supabase-js": "^2.0.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^1.2.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.11.0",
+    "tailwind-merge": "^1.8.1"
+  }
+}

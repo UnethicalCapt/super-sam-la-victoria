@@ -1,0 +1,23 @@
+.env
+.env.local
+.env.*.local
+node_modules/
+dist/
+build/
+*.log
+.DS_Store
+
+# secretos e instrucciones
+Instructions/
+*.zip
+nodejs-extracted/
+
+# archivos temporales de pruebas
+test*.js
+test*.ts
+simple.ts
+test_tsconfig.json
+
+# salidas
+dist/
+build/
