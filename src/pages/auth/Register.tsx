@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
-import { supabase } from '../../lib/supabase'
 import { Link, useNavigate } from 'react-router-dom'
+import { authService } from '../../services/authService'
+import { profilesService } from '../../services/profilesService'
 
 const Register: React.FC = () => {
   const [firstName, setFirstName] = useState('')
@@ -27,63 +28,50 @@ const Register: React.FC = () => {
       setError('El nombre es obligatorio')
       return false
     }
-
     if (!lastName.trim()) {
       setError('El apellido es obligatorio')
       return false
     }
-
     const cedulaClean = normalizeCedula(cedula)
     if (!cedulaClean) {
       setError('La cédula es obligatoria')
       return false
     }
-
     if (cedulaClean.length < 6 || cedulaClean.length > 12) {
       setError('La cédula debe tener entre 6 y 12 caracteres')
       return false
     }
-
     if (!phone.trim()) {
       setError('El teléfono es obligatorio')
       return false
     }
-
     if (!email.trim()) {
       setError('El correo electrónico es obligatorio')
       return false
     }
-
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(email)) {
       setError('Por favor ingrese un correo electrónico válido')
       return false
     }
-
     if (!password) {
       setError('La contraseña es obligatoria')
       return false
     }
-
     if (password.length < 6) {
       setError('La contraseña debe tener al menos 6 caracteres')
       return false
     }
-
     if (!birthDate) {
       setError('La fecha de nacimiento es obligatoria')
       return false
     }
-
     return true
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
-    if (!validateForm()) {
-      return
-    }
+    if (!validateForm()) return
 
     setLoading(true)
     setError(null)
@@ -93,46 +81,20 @@ const Register: React.FC = () => {
       const cedulaClean = normalizeCedula(cedula)
       const fullName = `${firstName.trim()} ${lastName.trim()}`
 
-      const { data: _signUpData, error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: fullName,
-            cedula: cedulaClean,
-          },
-        },
+      await authService.signUp({ email, password, fullName, cedula: cedulaClean })
+
+      const signInData = await authService.signIn({ email, password })
+      if (!signInData.user) throw new Error('Usuario no autenticado')
+
+      await profilesService.update(signInData.user.id, {
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        full_name: fullName,
+        birth_date: birthDate,
+        gender: gender || null,
+        phone: phone.trim(),
+        cedula: cedulaClean,
       })
-
-      if (signUpError) throw signUpError
-
-      if (!_signUpData.session) {
-        setSuccess('Revisa tu correo para confirmar la cuenta y luego inicia sesión.')
-        setLoading(false)
-        return
-      }
-
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
-
-      if (signInError) throw signInError
-
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({
-          first_name: firstName.trim(),
-          last_name: lastName.trim(),
-          full_name: fullName,
-          birth_date: birthDate,
-          gender: gender || null,
-          phone: phone.trim(),
-          cedula: cedulaClean,
-        } as any)
-        .eq('id', signInData.user.id)
-
-      if (updateError) throw updateError
 
       setSuccess('Registro exitoso. Ahora estás iniciado sesión.')
       navigate('/', { replace: true })
@@ -248,9 +210,9 @@ const Register: React.FC = () => {
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-primary"
             />
-            </div>
+          </div>
 
-            <div>
+          <div>
             <label htmlFor="password" className="block text-sm font-medium text-gray-200 mb-1">
               Contraseña
             </label>

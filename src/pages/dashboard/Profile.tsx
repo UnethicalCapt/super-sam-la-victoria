@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react'
-import { supabase } from '../../lib/supabase'
-import { useAuth } from '../../contexts/AuthContext'
-import Toast from '../../components/ui/Toast'
 import { Link } from 'react-router-dom'
+import { profilesService } from '../../services/profilesService'
+import { authService } from '../../services/authService'
+import Toast from '../../components/ui/Toast'
 import { toUserMessage } from '../../lib/errors'
 
 const Profile: React.FC = () => {
-  const { session, profile, refreshProfile, signOut } = useAuth()
+  const [profile, setProfile] = useState<any>(null)
   const [firstName, setFirstName] = useState<string>('')
   const [lastName, setLastName] = useState<string>('')
   const [birthDate, setBirthDate] = useState<string>('')
@@ -14,39 +14,46 @@ const Profile: React.FC = () => {
   const [phone, setPhone] = useState<string>('')
   const [cedula, setCedula] = useState<string>('')
   const [loading, setLoading] = useState<boolean>(false)
-  const [toast, setToast] = useState<{visible: boolean; message: string; type: 'success' | 'error'} | null>(null)
-   
+  const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' } | null>(null)
+
   const showToast = (message: string, type: 'success' | 'error') => {
-    setToast({ visible: true, message, type });
-    setTimeout(() => setToast(null), 3000);
-  };
+    setToast({ visible: true, message, type })
+    setTimeout(() => setToast(null), 3000)
+  }
 
   const normalizeCedula = (value: string): string => {
     return value.replace(/[.\s-]/g, '')
   }
 
-  // Initialize form with profile data when it loads
   useEffect(() => {
-    if (profile) {
-      setFirstName(profile.first_name ?? '')
-      setLastName(profile.last_name ?? '')
-      setBirthDate(profile.birth_date ?? '')
-      setGender(profile.gender ?? '')
-      setPhone(profile.phone ?? '')
-      setCedula(profile.cedula ?? '')
+    const loadProfile = async () => {
+      try {
+        const user = await authService.getUser()
+        if (user) {
+          const p = await profilesService.getById(user.id)
+          setProfile(p)
+          setFirstName(p.first_name ?? '')
+          setLastName(p.last_name ?? '')
+          setBirthDate(p.birth_date ?? '')
+          setGender(p.gender ?? '')
+          setPhone(p.phone ?? '')
+          setCedula(p.cedula ?? '')
+        }
+      } catch {
+        // profile load failed
+      }
     }
-  }, [profile])
+    loadProfile()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
-     e.preventDefault()
+    e.preventDefault()
 
-    // Basic validation
-     if (!firstName.trim()) {
+    if (!firstName.trim()) {
       showToast('El nombre es obligatorio', 'error')
       return
     }
-
-     if (!lastName.trim()) {
+    if (!lastName.trim()) {
       showToast('El apellido es obligatorio', 'error')
       return
     }
@@ -56,17 +63,14 @@ const Profile: React.FC = () => {
       showToast('La cédula es obligatoria', 'error')
       return
     }
-
     if (cedulaClean.length < 6 || cedulaClean.length > 12) {
       showToast('La cédula debe tener entre 6 y 12 caracteres', 'error')
       return
     }
-
     if (!phone.trim()) {
       showToast('El teléfono es obligatorio', 'error')
       return
     }
-
     if (!birthDate) {
       showToast('La fecha de nacimiento es obligatoria', 'error')
       return
@@ -74,25 +78,24 @@ const Profile: React.FC = () => {
 
     setLoading(true)
     try {
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({
-          first_name: firstName.trim(),
-          last_name: lastName.trim(),
-          full_name: `${firstName.trim()} ${lastName.trim()}`,
-          birth_date: birthDate,
-          gender: gender || null,
-          phone: phone.trim(),
-          cedula: cedulaClean,
-        } as any)
-        .eq('id', profile?.id as string)
+      const user = await authService.getUser()
+      if (!user) throw new Error('Usuario no autenticado')
 
-      if (updateError) throw updateError
+      await profilesService.update(user.id, {
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        full_name: `${firstName.trim()} ${lastName.trim()}`,
+        birth_date: birthDate,
+        gender: gender || null,
+        phone: phone.trim(),
+        cedula: cedulaClean,
+      })
 
-       showToast('Perfil actualizado exitosamente.', 'success')
-       await refreshProfile()
-     } catch (err: any) {
-       showToast(toUserMessage(err), 'error')
+      showToast('Perfil actualizado exitosamente.', 'success')
+      const p = await profilesService.getById(user.id)
+      setProfile(p)
+    } catch (err: any) {
+      showToast(toUserMessage(err), 'error')
     } finally {
       setLoading(false)
     }
@@ -106,33 +109,33 @@ const Profile: React.FC = () => {
     { value: 'Prefiero no indicar', label: 'Prefiero no indicar' },
   ]
 
-   if (loading) {
-     return (
-       <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center py-8 px-4 sm:px-6 lg:px-8">
-         <div className="max-w-md w-full bg-gray-900 border border-gray-800 rounded-lg p-6 space-y-6 mx-auto">
-           <div className="text-center space-y-2">
-             <h1 className="text-2xl font-bold text-gray-100">Super Sam La Victoria</h1>
-             <p className="text-sm text-gray-400">Mi perfil</p>
-           </div>
-           <div className="text-center text-gray-100">Guardando cambios...</div>
-         </div>
-       </div>
-     )
-   }
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center py-8 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full bg-gray-900 border border-gray-800 rounded-lg p-6 space-y-6 mx-auto">
+          <div className="text-center space-y-2">
+            <h1 className="text-2xl font-bold text-gray-100">Super Sam La Victoria</h1>
+            <p className="text-sm text-gray-400">Mi perfil</p>
+          </div>
+          <div className="text-center text-gray-100">Guardando cambios...</div>
+        </div>
+      </div>
+    )
+  }
 
-   if (!profile) {
-     return (
-       <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center py-8 px-4 sm:px-6 lg:px-8">
-         <div className="max-w-md w-full bg-gray-900 border border-gray-800 rounded-lg p-6 space-y-6 mx-auto">
-           <div className="text-center space-y-2">
-             <h1 className="text-2xl font-bold text-gray-100">Super Sam La Victoria</h1>
-             <p className="text-sm text-gray-400">Mi perfil</p>
-           </div>
-           <div className="text-center text-gray-100">Cargando perfil...</div>
-         </div>
-       </div>
-     )
-   }
+  if (!profile) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center py-8 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full bg-gray-900 border border-gray-800 rounded-lg p-6 space-y-6 mx-auto">
+          <div className="text-center space-y-2">
+            <h1 className="text-2xl font-bold text-gray-100">Super Sam La Victoria</h1>
+            <p className="text-sm text-gray-400">Mi perfil</p>
+          </div>
+          <div className="text-center text-gray-100">Cargando perfil...</div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center py-8 px-4 sm:px-6 lg:px-8">
@@ -142,13 +145,12 @@ const Profile: React.FC = () => {
           <p className="text-sm text-gray-400">Mi perfil</p>
         </div>
 
-        {/* Read-only info: email and winner status */}
         <div className="bg-gray-900 border border-gray-800 rounded-lg p-6 mb-6">
           <div className="space-y-4">
             <div className="space-y-2">
               <p className="text-sm font-medium text-gray-400">Correo electrónico</p>
               <p className="text-xl font-semibold text-gray-100">
-                {session?.user?.email || 'No disponible'}
+                {profile.email || 'No disponible'}
               </p>
             </div>
             <div className="space-y-2">
@@ -160,7 +162,6 @@ const Profile: React.FC = () => {
           </div>
         </div>
 
-        {/* Editable form */}
         <form onSubmit={handleSubmit} className="bg-gray-900 border border-gray-800 rounded-lg p-6 space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-4">
@@ -235,39 +236,31 @@ const Profile: React.FC = () => {
           <button
             type="submit"
             disabled={loading}
-             className="w-full bg-primary text-white py-3 px-6 rounded-md text-lg font-medium hover:bg-primary/90 active:scale-[0.98] transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+            className="w-full bg-primary text-white py-3 px-6 rounded-md text-lg font-medium hover:bg-primary/90 active:scale-[0.98] transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
           >
             {loading ? 'Guardando...' : 'Guardar cambios'}
           </button>
-         </form>
-          {toast ? (
-            <Toast
-              message={toast.message}
-              type={toast.type}
-              visible={toast.visible}
-              onClose={() => setToast(null)}
-            />
-          ) : null}
+        </form>
+        {toast ? (
+          <Toast message={toast.message} type={toast.type} visible={toast.visible} onClose={() => setToast(null)} />
+        ) : null}
 
-          {/* Enlace secundario: cambiar contraseña */}
-          <div className="mt-4">
-            <Link
-              to="/app/change-password"
-              className="block w-full text-center text-sm text-primary hover:underline focus:outline-none focus:ring-2 focus:ring-primary rounded-md px-4 py-2"
-            >
-              Cambiar contraseña
-            </Link>
-          </div>
+        <div className="mt-4">
+          <Link
+            to="/app/change-password"
+            className="block w-full text-center text-sm text-primary hover:underline focus:outline-none focus:ring-2 focus:ring-primary rounded-md px-4 py-2"
+          >
+            Cambiar contraseña
+          </Link>
+        </div>
 
-
-        {/* Link to log out */}
         <div className="mt-6">
           <button
             onClick={() => {
-              signOut()
+              authService.signOut()
               window.location.href = '/login'
             }}
-             className="w-full bg-red-500 text-white py-3 px-6 rounded-md text-lg font-medium hover:bg-red-600 active:scale-[0.98] transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+            className="w-full bg-red-500 text-white py-3 px-6 rounded-md text-lg font-medium hover:bg-red-600 active:scale-[0.98] transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
           >
             Cerrar sesión
           </button>

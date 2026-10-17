@@ -1,55 +1,46 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../lib/supabase';
+import React, { useState } from 'react'
+import { authService } from '../../services/authService'
+
 const ChangePassword: React.FC = () => {
-  const navigate = useNavigate();
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [messageType, setMessageType] = useState<'success' | 'error'>('success');
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState<string | null>(null)
+  const [messageType, setMessageType] = useState<'success' | 'error'>('success')
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage(null);
+    e.preventDefault()
+    setLoading(true)
+    setMessage(null)
 
     if (newPassword.length < 6) {
-      setMessage('La contraseña debe tener al menos 6 caracteres');
-      setMessageType('error');
-      setLoading(false);
-      return;
+      setMessage('La contraseña debe tener al menos 6 caracteres')
+      setMessageType('error')
+      setLoading(false)
+      return
     }
 
     if (newPassword !== confirmPassword) {
-      setMessage('Las contraseñas no coinciden');
-      setMessageType('error');
-      setLoading(false);
-      return;
+      setMessage('Las contraseñas no coinciden')
+      setMessageType('error')
+      setLoading(false)
+      return
     }
 
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      setMessage('Contraseña actualizada correctamente. Por favor, inicia sesión con tu nueva contraseña.');
-      setMessageType('success');
-      // Redirect to login after 2 seconds
+      await authService.updatePassword(newPassword)
+      setMessage('Contraseña actualizada correctamente. Por favor, inicia sesión con tu nueva contraseña.')
+      setMessageType('success')
       setTimeout(() => {
-        navigate('/login');
-      }, 2000);
+        window.location.href = '/login'
+      }, 2000)
     } catch (err: any) {
-      setMessage(err.message || 'Error al actualizar la contraseña');
-      setMessageType('error');
+      setMessage(err.message || 'Error al actualizar la contraseña')
+      setMessageType('error')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   return (
     <div className="min-h-screen bg-gray-950 flex items-center justify-center">
@@ -99,7 +90,7 @@ const ChangePassword: React.FC = () => {
         )}
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default ChangePassword;
+export default ChangePassword

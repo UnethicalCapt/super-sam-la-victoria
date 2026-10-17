@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
-import { supabase } from '../../lib/supabase'
-import { useNavigate } from 'react-router-dom'
+import { authService } from '../../services/authService'
+import { paymentsService } from '../../services/paymentsService'
+import { storageService } from '../../services/storageService'
 import Toast from '../../components/ui/Toast'
 import { toUserMessage } from '../../lib/errors'
 
@@ -8,26 +9,7 @@ const UploadPayment: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [paymentMethod, setPaymentMethod] = useState<'pago_movil' | 'binance' | 'zelle' | 'other'>('pago_movil')
   const [loading, setLoading] = useState(false)
-  const [toast, setToast] = useState<{visible: boolean; message: string; type: 'success' | 'error'} | null>(null)
-  const navigate = useNavigate()
-
-  // Validate file type and size
-  const validateFile = (file: File): boolean => {
-    // Check file type
-    if (file.type !== 'image/jpeg' && file.type !== 'image/png') {
-      showToast('Solo se permiten archivos JPG y PNG', 'error')
-      return false
-    }
-
-    // Check file size (1 MB max)
-    const maxSizeInBytes = 1024 * 1024 // 1 MB
-    if (file.size > maxSizeInBytes) {
-      showToast('La imagen debe pesar menos de 1 MB. Comprime la foto o elige otra.', 'error')
-      return false
-    }
-
-    return true
-  }
+  const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' } | null>(null)
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ visible: true, message, type })
@@ -38,7 +20,11 @@ const UploadPayment: React.FC = () => {
     const file = e.target.files?.[0] ?? null
 
     if (file) {
-      if (!validateFile(file)) {
+      if (file.type !== 'image/jpeg' && file.type !== 'image/png') {
+        showToast('Solo se permiten archivos JPG y PNG', 'error')
+        setSelectedFile(null)
+      } else if (file.size > 1024 * 1024) {
+        showToast('La imagen debe pesar menos de 1 MB. Comprime la foto o elige otra.', 'error')
         setSelectedFile(null)
       } else {
         setSelectedFile(file)
@@ -59,49 +45,33 @@ const UploadPayment: React.FC = () => {
     setLoading(true)
 
     try {
-      // Get current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser()
-      if (userError) throw userError
+      const user = await authService.getUser()
       if (!user) {
         throw new Error('Usuario no autenticado')
       }
 
-      // Upload file to Supabase Storage
       const timestamp = new Date().getTime()
       const fileName = `${timestamp}-${selectedFile.name}`
       const filePath = `${user.id}/${fileName}`
 
-      const { error: uploadError } = await supabase.storage
-        .from('payment-proofs')
-        .upload(filePath, selectedFile, {
-          contentType: selectedFile.type,
-          upsert: false
-        })
+      await storageService.uploadProof(filePath, selectedFile)
 
-      if (uploadError) throw uploadError
+      const paymentAmount = paymentsService.getDefaultAmount()
 
-      // Insert payment record with the file path (not public URL)
-      const paymentAmount = 100
-      const { error: dbError } = await supabase
-        .from('payments')
-        .insert({
-          user_id: user.id,
-          amount: paymentAmount,
-          payment_method: paymentMethod,
-          proof_url: filePath,
-          status: 'pending'
-        } as any)
+      await paymentsService.insert({
+        user_id: user.id,
+        amount: paymentAmount,
+        payment_method: paymentMethod,
+        proof_url: filePath,
+        status: 'pending',
+      })
 
-      if (dbError) throw dbError
-
-      // Success
       showToast('Comprobante enviado exitosamente.', 'success')
       setSelectedFile(null)
       setPaymentMethod('pago_movil')
 
-      // Redirect to My Payments after 1 second
       setTimeout(() => {
-        navigate('/app/my-payments', { replace: true })
+        window.location.href = '/app/my-payments'
       }, 1000)
     } catch (err: any) {
       showToast(toUserMessage(err), 'error')
@@ -123,7 +93,7 @@ const UploadPayment: React.FC = () => {
             <label htmlFor="paymentFile" className="block text-sm font-medium text-gray-400 mb-1">
               Comprobante de Pago (JPG o PNG, máximo 1 MB)
             </label>
-<input
+            <input
               id="paymentFile"
               type="file"
               accept="image/jpeg,image/png"
@@ -145,7 +115,7 @@ const UploadPayment: React.FC = () => {
             <label htmlFor="paymentMethod" className="block text-sm font-medium text-gray-400 mb-1">
               Método de Pago
             </label>
-<select
+            <select
               id="paymentMethod"
               value={paymentMethod}
               onChange={(e) => setPaymentMethod(e.target.value as 'pago_movil' | 'binance' | 'zelle' | 'other')}
@@ -168,12 +138,7 @@ const UploadPayment: React.FC = () => {
         </form>
 
         {toast && (
-          <Toast
-            message={toast.message}
-            type={toast.type}
-            visible={toast.visible}
-            onClose={() => setToast(null)}
-          />
+          <Toast message={toast.message} type={toast.type} visible={toast.visible} onClose={() => setToast(null)} />
         )}
       </div>
     </div>
