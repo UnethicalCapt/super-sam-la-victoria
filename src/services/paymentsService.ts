@@ -77,7 +77,7 @@ export const paymentsService = {
   async countByStatus(status: 'pending' | 'approved' | 'rejected') {
     const { data, error } = await supabase
       .from('payments')
-      .select('id', { count: 'exact' })
+      .select('*', { count: 'exact', head: true })
       .eq('status', status)
     if (error) throw error
     return data?.length ?? 0

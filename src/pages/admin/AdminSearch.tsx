@@ -19,7 +19,7 @@ const AdminSearch: React.FC = () => {
     setProfile(null)
     try {
       const normalized = searchTerm.replace(/[.\s-]/g, '')
-      const data = await profilesService.getById(normalized)
+      const data = await profilesService.searchByCedula(normalized)
       setProfile(data)
     } catch (err: any) {
       setError(toUserMessage(err))

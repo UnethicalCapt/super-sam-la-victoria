@@ -38,33 +38,55 @@ export interface Payment {
 }
 
 // Database schema types for Supabase
-export type Database = {
+export interface PaymentWeek {
+  id: string;
+  week_number: number;
+  due_date: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface Database {
   public: {
     Tables: {
       profiles: {
         Row: Profile;
         Insert: Omit<Profile, 'id' | 'created_at' | 'updated_at'>;
         Update: Omit<Profile, 'id'>;
+        Relationships: [];
       };
       groups: {
         Row: Group;
         Insert: Omit<Group, 'id' | 'created_at'>;
         Update: Omit<Group, 'id'>;
+        Relationships: [];
       };
       payments: {
         Row: Payment;
-        Insert: Omit<Payment, 'id' | 'created_at'>;
-        Update: Omit<Payment, 'id'>;
+        Insert: Omit<Payment, 'id' | 'created_at' | 'status' | 'amount'>;
+        Update: Omit<Payment, 'id' | 'status' | 'amount'>;
+        Relationships: [];
+      };
+      payment_weeks: {
+        Row: PaymentWeek;
+        Insert: Omit<PaymentWeek, 'id' | 'created_at'>;
+        Update: Omit<PaymentWeek, 'id'>;
+        Relationships: [];
       };
     };
-    Views: {
-      [_ in never]: never;
-    };
+    Views: { [key: string]: never };
     Functions: {
-      [_ in never]: never;
+      is_admin: {
+        Args: Record<string, never>;
+        Returns: boolean;
+      };
+      current_week_number: {
+        Args: Record<string, never>;
+        Returns: number;
+      };
     };
-    Enums: {
-      [_ in never]: never;
-    };
+    Enums: { [key: string]: never };
   };
-};
+}
+
+export type Database = Database;

@@ -40,6 +40,16 @@ export const profilesService = {
     return data as ProfileRow
   },
 
+  async searchByCedula(cedula: string) {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('cedula', cedula)
+      .single()
+    if (error) throw error
+    return data as ProfileRow
+  },
+
   async update(userId: string, updates: ProfileUpdate) {
     const { data, error } = await supabase
       .from('profiles')
